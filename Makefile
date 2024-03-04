@@ -15,3 +15,6 @@ test-race:
 .PHONY: lint
 lint:
 	golangci-lint run -v ./... --timeout 5m
+.PHONY: install
+install:
+	go mod download
