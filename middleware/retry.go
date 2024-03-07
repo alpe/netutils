@@ -1,4 +1,4 @@
-package proxy
+package middleware
 
 import (
 	"bytes"
@@ -22,7 +22,7 @@ func MustRegisterRetryMetrics(r prometheus.Registerer) {
 	r.MustRegister(totalRetries)
 }
 
-var _ http.Handler = &RetryMiddleware{}
+var _ http.Handler = (*RetryMiddleware)(nil)
 
 type RetryMiddleware struct {
 	nextHandler      http.Handler
@@ -59,18 +59,18 @@ func NewRetryMiddleware(maxRetries int, other http.Handler, optRetryStatusCodes 
 // It retries the request if the response was discarded and the response status code is retryable.
 // It uses exponential backoff for retries with a random jitter.
 // The maximum number of retries is determined by the maxRetries field of RetryMiddleware.
-func (r RetryMiddleware) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
-	lazyBody := NewLazyBodyCapturer(request.Body)
-	request.Body = lazyBody
+func (r RetryMiddleware) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
+	lazyBody := NewLazyBodyCapturer(req.Body)
+	req.Body = lazyBody
 	for i := 0; ; i++ {
-		withoutRetry := i == r.maxRetries || request.Context().Err() != nil
+		withoutRetry := i == r.maxRetries || req.Context().Err() != nil
 		if withoutRetry {
-			r.nextHandler.ServeHTTP(writer, request)
+			r.nextHandler.ServeHTTP(resp, req)
 			return
 		}
-		capturedResp := NewDiscardableResponseWriter(writer, r.isRetryableStatusCode)
+		capturedResp := NewDiscardableResponseWriter(resp, r.isRetryableStatusCode)
 		// call next handler in chain
-		r.nextHandler.ServeHTTP(capturedResp, request.Clone(request.Context())) // clone also copies the reference to the lazy body capturer
+		r.nextHandler.ServeHTTP(capturedResp, req.Clone(req.Context())) // clone also copies the reference to the lazy body capturer
 
 		if !r.isRetryableStatusCode(capturedResp.CapturedStatusCode()) {
 			break
@@ -117,8 +117,8 @@ type (
 )
 
 var (
-	_ http.Flusher  = &discardableResponseWriter{}
-	_ io.ReaderFrom = &discardableResponseWriterWithReaderFrom{}
+	_ http.Flusher  = (*discardableResponseWriter)(nil)
+	_ io.ReaderFrom = (*discardableResponseWriterWithReaderFrom)(nil)
 )
 
 // discardableResponseWriter represents a wrapper around http.ResponseWriter that provides additional
@@ -218,8 +218,8 @@ func (r *discardableResponseWriterWithReaderFrom) ReadFrom(re io.Reader) (int64,
 }
 
 var (
-	_ io.ReadCloser = &lazyBodyCapturer{}
-	_ io.WriterTo   = &lazyBodyCapturerWriteTo{}
+	_ io.ReadCloser = (*lazyBodyCapturer)(nil)
+	_ io.WriterTo   = (*lazyBodyCapturerWriteTo)(nil)
 )
 
 // lazyBodyCapturer represents a type that captures the request body lazily.

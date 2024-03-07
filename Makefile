@@ -6,15 +6,22 @@ test-all: test-race test-integration
 
 .PHONY: test-unit
 test-unit:
-	go test -mod=readonly ./...
+	@go test -mod=readonly ./...
 
 .PHONY: test-race
 test-race:
-	go test -mod=readonly -race ./...
+	@go test -mod=readonly -race ./...
 
 .PHONY: lint
 lint:
-	golangci-lint run -v ./... --timeout 5m
+	@golangci-lint run -v ./... --timeout 5m
+
+.PHONY: benchmark
+benchmark:
+	@go test -mod=readonly -bench=. ./...
+
 .PHONY: install
 install:
-	go mod download
+	@go mod download
+
+
